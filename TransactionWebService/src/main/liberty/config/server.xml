@@ -9,13 +9,10 @@
 
     <httpEndpoint id="defaultHttpEndpoint" httpPort="9081" httpsPort="9444" host="*" />
 
-    <transaction totalTranLifetimeTimeout="120s" clientInactivityTimeout="60s" heuristicRetryInterval="60s" heuristicRetryLimit="10" />
+    <wsAtomicTransaction SSLEnabled="true" SSLRef="defaultSSLConfig" clientAuth="false"/>
+    <webServices atomicTransaction="supported"/>
 
-    <wsAtomicTransaction sslEnabled="true" />
-
-    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" />
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore"/>
     <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
     <keyStore id="defaultTrustStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12"/>
-
-    <webApplication id="TransactionWebService" location="TransactionWebService.war" contextRoot="/" />
 </server>
