@@ -5,9 +5,12 @@
         <feature>xmlBinding-4.0</feature>
         <feature>wsAtomicTransaction-1.2</feature>
         <feature>enterpriseBeansLite-4.0</feature>
+        <feature>appSecurity-5.0</feature>
     </featureManager>
 
-    <httpEndpoint id="defaultHttpEndpoint" httpPort="9081" httpsPort="9444" host="*" />
+    <httpEndpoint id="defaultHttpEndpoint" httpPort="9081" httpsPort="9444" host="*" >
+        <accessLogging/>
+    </httpEndpoint>
 
     <wsAtomicTransaction SSLEnabled="true" SSLRef="defaultSSLConfig" clientAuth="false"/>
     <webServices atomicTransaction="supported"/>
@@ -15,4 +18,10 @@
     <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" verifyHostname="false"/>
     <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
     <keyStore id="defaultTrustStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12"/>
+
+    <basicRegistry id="basic" realm="BasicRealm">
+        <user name="admin" password="p@admin" />
+    </basicRegistry>
+
+    <logging traceSpecification="com.ibm.webservices.example.*=all:com.ibm.ws.jaxws*=all"/>
 </server>

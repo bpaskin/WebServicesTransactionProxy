@@ -4,7 +4,8 @@ import jakarta.ejb.Stateless;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebService;
 import jakarta.xml.ws.soap.Addressing;
-import jakarta.transaction.Transactional;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
 import jakarta.xml.ws.soap.MTOM;
 
 @WebService(
@@ -20,7 +21,7 @@ import jakarta.xml.ws.soap.MTOM;
 public class BankService {
 
     @WebMethod
-    @Transactional(Transactional.TxType.MANDATORY) 
+    @TransactionAttribute(TransactionAttributeType.MANDATORY)
     public boolean transfer(String fromAccount, String toAccount, int cents) {
         if (cents <= 0) {
             throw new IllegalArgumentException("Amount must be > 0");
