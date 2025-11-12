@@ -12,7 +12,7 @@
     <wsAtomicTransaction SSLEnabled="true" SSLRef="defaultSSLConfig" clientAuth="false"/>
     <webServices atomicTransaction="supported"/>
 
-    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore"/>
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" verifyHostname="false"/>
     <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
     <keyStore id="defaultTrustStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12"/>
 </server>
