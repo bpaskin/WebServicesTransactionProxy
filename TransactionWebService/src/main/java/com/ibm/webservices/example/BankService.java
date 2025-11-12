@@ -3,6 +3,7 @@ package com.ibm.webservices.example;
 import jakarta.ejb.Stateless;
 import jakarta.jws.WebMethod;
 import jakarta.jws.WebService;
+import jakarta.jws.HandlerChain;
 import jakarta.xml.ws.soap.Addressing;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -15,6 +16,7 @@ import jakarta.xml.ws.soap.MTOM;
     portName = "BankServicePort",
     wsdlLocation = "WEB-INF/wsdl/BankService.wsdl"
 )
+@HandlerChain(file = "/META-INF/handler-chain.xml")
 @Addressing(enabled = true, required = true)
 @MTOM(enabled = false)
 @Stateless

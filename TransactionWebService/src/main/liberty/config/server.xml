@@ -8,12 +8,13 @@
         <feature>appSecurity-5.0</feature>
     </featureManager>
 
-    <httpEndpoint id="defaultHttpEndpoint" httpPort="9081" httpsPort="9444" host="*" >
+    <variable name="defaultHostName" value="localhost" />
+
+    <httpEndpoint id="defaultHttpEndpoint" httpPort="9081" httpsPort="9444">
         <accessLogging/>
     </httpEndpoint>
 
     <wsAtomicTransaction SSLEnabled="true" SSLRef="defaultSSLConfig" clientAuth="false"/>
-    <webServices atomicTransaction="supported"/>
 
     <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" verifyHostname="false"/>
     <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
@@ -23,5 +24,7 @@
         <user name="admin" password="p@admin" />
     </basicRegistry>
 
-    <logging traceSpecification="com.ibm.webservices.example.*=all:com.ibm.ws.jaxws*=all"/>
+    <webApplication id="TransactionWebService" location="TransactionWebService.war" contextRoot="/TransactionWebService" />
+
+    <logging traceSpecification="com.ibm.webservices.example.*=all"/>
 </server>
