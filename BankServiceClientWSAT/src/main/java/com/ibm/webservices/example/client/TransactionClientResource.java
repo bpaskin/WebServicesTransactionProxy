@@ -14,9 +14,9 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * REST endpoint for the Bank Service Client
- *
- * This resource provides HTTP endpoints to interact with the bank service client
+ * REST endpoint for the WS-AT Transaction Client
+ * 
+ * This resource provides HTTP endpoints to interact with the WS-AT client
  * running in Liberty, allowing web-based testing and monitoring.
  */
 @ApplicationScoped
@@ -28,7 +28,7 @@ public class TransactionClientResource {
     private static final Logger logger = Logger.getLogger(TransactionClientResource.class.getName());
     
     @Inject
-    private TransactionClient transactionClient;
+    private WSATTransactionClient wsatClient;
     
     /**
      * Health check endpoint
@@ -37,14 +37,14 @@ public class TransactionClientResource {
     @Path("/health")
     public Response health() {
         try {
-            boolean initialized = transactionClient.isInitialized();
-            String status = transactionClient.getServiceStatus();
+            boolean initialized = wsatClient.isInitialized();
+            String status = wsatClient.getTransactionStatus();
             
             String healthInfo = String.format(
                 "{\n" +
                 "  \"status\": \"UP\",\n" +
                 "  \"client_initialized\": %s,\n" +
-                "  \"service_status\": \"%s\",\n" +
+                "  \"transaction_status\": \"%s\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
                 "}",
                 initialized,
@@ -72,17 +72,17 @@ public class TransactionClientResource {
     }
     
     /**
-     * Initialize the Bank Service client
+     * Initialize the WS-AT client
      */
     @POST
     @Path("/initialize")
     public Response initialize() {
         try {
-            transactionClient.initialize();
+            wsatClient.initialize();
             
             String response = String.format(
                 "{\n" +
-                "  \"message\": \"Bank Service Client initialized successfully\",\n" +
+                "  \"message\": \"WS-AT Client initialized successfully\",\n" +
                 "  \"status\": \"SUCCESS\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
                 "}",
@@ -95,7 +95,7 @@ public class TransactionClientResource {
             logger.log(Level.SEVERE, "Failed to initialize client", e);
             String errorResponse = String.format(
                 "{\n" +
-                "  \"message\": \"Failed to initialize Bank Service Client\",\n" +
+                "  \"message\": \"Failed to initialize WS-AT Client\",\n" +
                 "  \"error\": \"%s\",\n" +
                 "  \"status\": \"ERROR\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
@@ -110,17 +110,17 @@ public class TransactionClientResource {
     }
     
     /**
-     * Run the complete service demonstration
+     * Run the complete transaction demonstration
      */
     @POST
     @Path("/demo")
     public Response runDemo() {
         try {
-            String demoResult = transactionClient.runDemo();
+            String demoResult = wsatClient.runTransactionDemo();
             
             String response = String.format(
                 "{\n" +
-                "  \"message\": \"Service demonstration completed\",\n" +
+                "  \"message\": \"Transaction demonstration completed\",\n" +
                 "  \"status\": \"SUCCESS\",\n" +
                 "  \"result\": \"%s\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
@@ -135,7 +135,7 @@ public class TransactionClientResource {
             logger.log(Level.SEVERE, "Failed to run transaction demo", e);
             String errorResponse = String.format(
                 "{\n" +
-                "  \"message\": \"Failed to run service demonstration\",\n" +
+                "  \"message\": \"Failed to run transaction demonstration\",\n" +
                 "  \"error\": \"%s\",\n" +
                 "  \"status\": \"ERROR\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
@@ -175,7 +175,7 @@ public class TransactionClientResource {
         }
         
         try {
-            String transferResult = transactionClient.executeTransfer(fromAccount, toAccount, amountCents);
+            String transferResult = wsatClient.executeTransfer(fromAccount, toAccount, amountCents);
             
             String response = String.format(
                 "{\n" +
@@ -217,18 +217,18 @@ public class TransactionClientResource {
     }
     
     /**
-     * Get current service status
+     * Get current transaction status
      */
     @GET
     @Path("/status")
     public Response getStatus() {
         try {
-            String status = transactionClient.getServiceStatus();
-            boolean initialized = transactionClient.isInitialized();
+            String status = wsatClient.getTransactionStatus();
+            boolean initialized = wsatClient.isInitialized();
             
             String response = String.format(
                 "{\n" +
-                "  \"service_status\": \"%s\",\n" +
+                "  \"transaction_status\": \"%s\",\n" +
                 "  \"client_initialized\": %s,\n" +
                 "  \"timestamp\": \"%s\"\n" +
                 "}",
@@ -243,7 +243,7 @@ public class TransactionClientResource {
             logger.log(Level.SEVERE, "Failed to get status", e);
             String errorResponse = String.format(
                 "{\n" +
-                "  \"message\": \"Failed to get service status\",\n" +
+                "  \"message\": \"Failed to get transaction status\",\n" +
                 "  \"error\": \"%s\",\n" +
                 "  \"status\": \"ERROR\",\n" +
                 "  \"timestamp\": \"%s\"\n" +
@@ -264,16 +264,16 @@ public class TransactionClientResource {
     @Path("/help")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getHelp() {
-        String help =
-            "Bank Service Client API\n" +
-            "=======================\n\n" +
+        String help = 
+            "WS-AT Transaction Client API\n" +
+            "============================\n\n" +
             "Available endpoints:\n\n" +
             "GET  /transaction/health     - Health check\n" +
             "POST /transaction/initialize - Initialize the client\n" +
-            "POST /transaction/demo       - Run service demonstration\n" +
+            "POST /transaction/demo       - Run transaction demonstration\n" +
             "POST /transaction/transfer   - Execute single transfer\n" +
             "                               Parameters: from, to, amount (in cents)\n" +
-            "GET  /transaction/status     - Get service status\n" +
+            "GET  /transaction/status     - Get transaction status\n" +
             "GET  /transaction/help       - This help message\n\n" +
             "Examples:\n" +
             "curl -X POST http://localhost:9080/client/api/transaction/initialize\n" +

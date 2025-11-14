@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="urn:example:bank"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:wsp="http://www.w3.org/ns/ws-policy"
+             xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+             xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata"
+             targetNamespace="urn:example:bank"
+             name="BankService">
+
+    <!-- Import the WS-AT Policy -->
+    <wsp:PolicyReference URI="#WSATPolicy"/>
+
+    <!-- Types -->
+    <types>
+        <xsd:schema targetNamespace="urn:example:bank">
+            <xsd:element name="transfer">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="arg0" type="xsd:string"/>
+                        <xsd:element name="arg1" type="xsd:string"/>
+                        <xsd:element name="arg2" type="xsd:int"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="transferResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="return" type="xsd:boolean"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </types>
+
+    <!-- Messages -->
+    <message name="transfer">
+        <part name="parameters" element="tns:transfer"/>
+    </message>
+    <message name="transferResponse">
+        <part name="parameters" element="tns:transferResponse"/>
+    </message>
+
+    <!-- Port Type -->
+    <portType name="BankService">
+        <operation name="transfer">
+            <input message="tns:transfer" wsam:Action="urn:example:bank/BankService/transferRequest"/>
+            <output message="tns:transferResponse" wsam:Action="urn:example:bank/BankService/transferResponse"/>
+        </operation>
+    </portType>
+
+    <!-- Binding with WS-AT Policy -->
+    <binding name="BankServicePortBinding" type="tns:BankService">
+        <!-- Apply WS-AT Policy to the binding -->
+        <wsp:PolicyReference URI="#WSATPolicy"/>
+        
+        <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+        
+        <operation name="transfer">
+            <soap:operation soapAction=""/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+
+    <!-- Service -->
+    <service name="BankService">
+        <port name="BankServicePort" binding="tns:BankServicePortBinding">
+            <soap:address location="https://localhost:9444/TransactionWebService/BankService"/>
+        </port>
+    </service>
+
+    <!-- WS-AT Policy Definition -->
+    <wsp:Policy wsu:Id="WSATPolicy">
+        <wsp:ExactlyOne>
+            <wsp:All>
+                <!-- WS-AtomicTransaction Policy Assertion using OASIS namespace -->
+                <wsat:ATAssertion xmlns:wsat="http://docs.oasis-open.org/ws-tx/wsat/2006/06" wsp:Optional="false"/>
+                
+                <!-- WS-Addressing is required for WS-AT coordination -->
+                <wsam:Addressing wsp:Optional="false">
+                    <wsp:Policy>
+                        <wsam:AnonymousResponses/>
+                    </wsp:Policy>
+                </wsam:Addressing>
+            </wsp:All>
+        </wsp:ExactlyOne>
+    </wsp:Policy>
+
+</definitions>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bank Service Client - Liberty</title>
+    <title>WS-AT Transaction Client - Liberty</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -108,12 +108,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>Bank Service Client - Liberty</h1>
+        <h1>WS-AT Transaction Client - Liberty</h1>
         
         <div class="section">
             <h2>System Status</h2>
             <button onclick="checkHealth()">Check Health</button>
-            <button onclick="getStatus()">Get Service Status</button>
+            <button onclick="getStatus()">Get Transaction Status</button>
             <div id="statusResult" class="status"></div>
         </div>
 
@@ -124,7 +124,7 @@
         </div>
 
         <div class="section">
-            <h2>Service Demonstrations</h2>
+            <h2>Transaction Demonstrations</h2>
             <button onclick="runDemo()">Run Full Demo</button>
             <div class="loading" id="demoLoading">Running demonstration... This may take a few moments.</div>
             <div id="demoResult" class="result"></div>
@@ -205,7 +205,7 @@
             const result = await makeRequest('/health');
             if (result.success) {
                 if (result.data) {
-                    displayStatus(`Status: ${result.data.status}\nInitialized: ${result.data.client_initialized}\nService: ${result.data.service_status}`, result.data.status === 'UP');
+                    displayStatus(`Status: ${result.data.status}\nInitialized: ${result.data.client_initialized}\nTransaction: ${result.data.transaction_status}`, result.data.status === 'UP');
                 } else {
                     displayStatus(result.text, true);
                 }
@@ -218,7 +218,7 @@
             const result = await makeRequest('/status');
             if (result.success) {
                 if (result.data) {
-                    displayStatus(`Service Status: ${result.data.service_status}\nInitialized: ${result.data.client_initialized}`, true);
+                    displayStatus(`Transaction Status: ${result.data.transaction_status}\nInitialized: ${result.data.client_initialized}`, true);
                 } else {
                     displayStatus(result.text, true);
                 }

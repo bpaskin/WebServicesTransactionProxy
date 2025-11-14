@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.ibm.example.jaxws</groupId>
-    <artifactId>BankServiceClient</artifactId>
+    <artifactId>BankServiceClientWSAT</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
 
@@ -28,14 +28,14 @@
     </dependencies>
 
     <build>
-        <finalName>BankServiceClient</finalName>
+        <finalName>BankServiceClientWSAT</finalName>
         <plugins>
             <plugin>
                 <groupId>io.openliberty.tools</groupId>
                 <artifactId>liberty-maven-plugin</artifactId>
                 <version>${liberty.maven.version}</version>
                 <configuration>
-                    <serverName>BankServiceClient</serverName>
+                    <serverName>BankServiceClientWSAT</serverName>
                     <runtimeArtifact>
                         <groupId>io.openliberty</groupId>
                         <artifactId>openliberty-runtime</artifactId>
@@ -75,9 +75,9 @@
                             <goal>wsimport</goal>
                         </goals>
                         <configuration>
-                            <wsdlUrls>
+                            <wsdlFiles>
                                 <wsdlFile>${basedir}/src/main/resources/wsdl/BankService.wsdl</wsdlFile>
-                            </wsdlUrls>
+                            </wsdlFiles>
                             <packageName>com.ibm.webservices.example.client.generated</packageName>
                             <sourceDestDir>${project.build.directory}/generated-sources/wsimport</sourceDestDir>
                             <keep>true</keep>

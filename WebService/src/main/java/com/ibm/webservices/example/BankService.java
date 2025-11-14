@@ -16,11 +16,17 @@ import jakarta.xml.ws.soap.MTOM;
     portName = "BankServicePort"
 )
 @HandlerChain(file = "/META-INF/handler-chain.xml")
+@Addressing(enabled = true, required = true)
+@MTOM(enabled = false)
 @Stateless
 public class BankService {
 
     @WebMethod
     public boolean transfer(String fromAccount, String toAccount, int cents) {
+        System.out.println("FROM: " + fromAccount);
+        System.out.println("TO: " + toAccount);
+        System.out.println("CENTS: " + cents);
+
         if (cents <= 0) {
             throw new IllegalArgumentException("Amount must be > 0");
         }

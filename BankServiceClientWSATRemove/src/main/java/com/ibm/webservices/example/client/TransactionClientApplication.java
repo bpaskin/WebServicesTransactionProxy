@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 /**
- * JAX-RS Application configuration for the Bank Service Client
+ * JAX-RS Application configuration for the WS-AT Transaction Client
  */
 @ApplicationPath("/api")
 public class TransactionClientApplication extends Application {

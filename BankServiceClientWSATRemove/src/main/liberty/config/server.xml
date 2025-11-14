@@ -1,8 +1,9 @@
-<server description="Bank Service Client">
+<server description="WS-AT Bank Service Client">
 
     <featureManager>        
         <feature>xmlWS-4.0</feature>
         <feature>xmlBinding-4.0</feature>
+        <feature>wsAtomicTransaction-1.2</feature>
         <feature>enterpriseBeansLite-4.0</feature>
         <feature>servlet-6.0</feature>
         <feature>cdi-4.0</feature>
@@ -15,6 +16,8 @@
     <variable name="defaultHostName" value="localhost" />
     <httpEndpoint id="defaultHttpEndpoint" httpPort="9080" httpsPort="9443" />
 
+    <wsAtomicTransaction SSLEnabled="true" SSLRef="defaultSSLConfig" clientAuth="false"/>
+
     <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" verifyHostname="false"/>
     <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
     <keyStore id="defaultTrustStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12"/>
@@ -25,7 +28,7 @@
         <user name="admin" password="p@admin" />
     </basicRegistry>
 
-    <webApplication id="BankServiceClient" location="BankServiceClient.war" contextRoot="/client" />
+    <webApplication id="BankServiceClientWSAT" location="BankServiceClientWSAT.war" contextRoot="/client" />
 
     <logging traceSpecification="com.ibm.webservices.example.client.*=all"/>
 </server>
