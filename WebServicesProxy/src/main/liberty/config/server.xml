@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="Web Services Proxy Server">
+
+    <!-- Enable the features we need -->
+    <featureManager>
+        <feature>servlet-6.0</feature>
+        <feature>cdi-4.0</feature>
+        <feature>jsonp-2.1</feature>
+        <feature>jsonb-3.0</feature>
+        <feature>restfulWS-3.1</feature>
+        <feature>transportSecurity-1.0</feature>
+        <feature>xmlBinding-4.0</feature>
+        <feature>xmlWS-4.0</feature>
+        <feature>appSecurity-5.0</feature>
+    </featureManager>
+
+    <variable name="defaultHostName" value="localhost" />
+    <httpEndpoint id="defaultHttpEndpoint" httpPort="8080" httpsPort="9448" />
+
+    <ssl id="defaultSSLConfig" keyStoreRef="defaultKeyStore" trustStoreRef="defaultTrustStore" verifyHostname="false"/>
+    <keyStore id="defaultKeyStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12" />
+    <keyStore id="defaultTrustStore" password="Liberty" location="${server.config.dir}/resources/security/key.p12"/>
+
+    <basicRegistry id="basic" realm="BasicRealm">
+        <user name="admin" password="p@admin" />
+    </basicRegistry>
+
+    <webApplication id="WebServicesProxy" location="WebServicesProxy.war" contextRoot="/" />
+
+    <logging traceSpecification="*=info:com.ibm.webservices.proxy.*=all"/>
+</server>
