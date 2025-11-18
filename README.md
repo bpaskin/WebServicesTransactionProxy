@@ -11,6 +11,7 @@ These examples show how to use Web Services with WS-AT at the client and server 
 2. **WebService** is a plain Web Service that does not implement WS-AT and works with **BankServiceClient** and **BankServiceClientWSATRemove**
 3. **BankServiceClientWSATRemove** uses a handler to remove the WS-AT headers to communicate directly with a non WS-AT service.
 4. **RemoveWSATHandler** is a SOAPHandler to remove the WS-AT headers before the message is sent.
+5. **WebServicesProxy** is a proxy that will take requests and forward them to the destination and remove the WS-AT information from the SOAP messages.
 
 ---
 
@@ -41,3 +42,7 @@ To use the SOAP Handler place the library in Liberty's `${server_config_dir}/lib
   handlerChain.add(new RemoveWSATHandler());
   bp.getBinding().setHandlerChain(handlerChain);
   ```
+
+---
+
+Instead of changing the code **WebServicesProxy** can be used as a proxy.  All requests routed through the proxy will have the SOAP message edited to remove the WS-AT headers and the message will be routed to the destination based on `To` field in the SOAP message.  If the field is not found then the `X-Proxy` headers will be examined where to send the message.
