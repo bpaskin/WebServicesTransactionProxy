@@ -7,12 +7,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.xml.soap.*;
 import jakarta.inject.Inject;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.StringEntity;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.URI;
+import java.time.Duration;
 
 import java.io.*;
 import java.util.Enumeration;
@@ -257,11 +256,14 @@ public class WebServicesProxyServlet extends HttpServlet {
                 servicePath = requestPath.substring(contextPath.length());
             }
             
-            // Ensure destination URL ends with the service path
+            // Ensure proper URL concatenation between destination URL and service path
             if (!destinationUrl.endsWith("/") && !servicePath.startsWith("/")) {
-                destinationUrl += "/";
+                destinationUrl += "/" + servicePath;
+            } else if (destinationUrl.endsWith("/") && servicePath.startsWith("/")) {
+                destinationUrl += servicePath.substring(1);
+            } else {
+                destinationUrl += servicePath;
             }
-            destinationUrl += servicePath.startsWith("/") ? servicePath.substring(1) : servicePath;
             
             // Add query string if present
             if (request.getQueryString() != null) {
@@ -291,6 +293,11 @@ public class WebServicesProxyServlet extends HttpServlet {
             
             StringBuilder url = new StringBuilder();
             url.append(protocol).append("://").append(host).append(":").append(port);
+            
+            // Ensure proper path concatenation
+            if (!servicePath.startsWith("/")) {
+                url.append("/");
+            }
             url.append(servicePath);
             
             if (request.getQueryString() != null) {
@@ -449,39 +456,47 @@ public class WebServicesProxyServlet extends HttpServlet {
             logger.info("PROXY: Outgoing SOAP Content:\n" + soapContent);
         }
         
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost postRequest = new HttpPost(destinationUrl);
+        try {
+            HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(config.getConnectionTimeoutMs()))
+                .build();
+             
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(destinationUrl))
+                .timeout(Duration.ofMillis(config.getSocketTimeoutMs()))
+                .header("Content-Type", "text/xml; charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(soapContent));
             
             // Copy relevant headers
-            copyHeaders(originalRequest, postRequest);
+            copyHeaders(originalRequest, requestBuilder);
+            
+            HttpRequest request = requestBuilder.build();
             
             if (config.isEnableDetailedLogging()) {
                 logger.info("PROXY: Outgoing Request Headers:");
-                for (org.apache.hc.core5.http.Header header : postRequest.getHeaders()) {
-                    logger.info("PROXY:   " + header.getName() + ": " + header.getValue());
-                }
+                request.headers().map().forEach((name, values) -> {
+                    values.forEach(value -> logger.info("PROXY:   " + name + ": " + value));
+                });
             }
-            
-            // Set the SOAP content
-            StringEntity entity = new StringEntity(soapContent, ContentType.create("text/xml", "UTF-8"));
-            postRequest.setEntity(entity);
             
             // Execute request
-            try (CloseableHttpResponse response = httpClient.execute(postRequest)) {
-                String responseContent = readResponseContent(response);
-                
-                if (config.isEnableDetailedLogging()) {
-                    logger.info("=== PROXY: Response from Target Endpoint ===");
-                    logger.info("PROXY: Response Status: " + response.getCode() + " " + response.getReasonPhrase());
-                    logger.info("PROXY: Response Headers:");
-                    for (org.apache.hc.core5.http.Header header : response.getHeaders()) {
-                        logger.info("PROXY:   " + header.getName() + ": " + header.getValue());
-                    }
-                    logger.info("PROXY: Response Content:\n" + responseContent);
-                }
-                
-                return responseContent;
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (config.isEnableDetailedLogging()) {
+                logger.info("=== PROXY: Response from Target Endpoint ===");
+                logger.info("PROXY: Response Status: " + response.statusCode());
+                logger.info("PROXY: Response Headers:");
+                response.headers().map().forEach((name, values) -> {
+                    values.forEach(value -> logger.info("PROXY:   " + name + ": " + value));
+                });
+                logger.info("PROXY: Response Content:\n" + response.body());
             }
+            
+            return response.body();
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Request was interrupted", e);
         }
     }
     
@@ -496,43 +511,53 @@ public class WebServicesProxyServlet extends HttpServlet {
             logger.info("PROXY: Target URL: " + destinationUrl);
         }
         
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            org.apache.hc.client5.http.classic.methods.HttpGet getRequest =
-                new org.apache.hc.client5.http.classic.methods.HttpGet(destinationUrl);
+        try {
+            HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(config.getConnectionTimeoutMs()))
+                .build();
+            
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(destinationUrl))
+                .timeout(Duration.ofMillis(config.getSocketTimeoutMs()))
+                .GET();
             
             // Copy relevant headers
-            copyHeaders(originalRequest, getRequest);
+            copyHeaders(originalRequest, requestBuilder);
+            
+            HttpRequest request = requestBuilder.build();
             
             if (config.isEnableDetailedLogging()) {
                 logger.info("PROXY: Outgoing WSDL Request Headers:");
-                for (org.apache.hc.core5.http.Header header : getRequest.getHeaders()) {
-                    logger.info("PROXY:   " + header.getName() + ": " + header.getValue());
-                }
+                request.headers().map().forEach((name, values) -> {
+                    values.forEach(value -> logger.info("PROXY:   " + name + ": " + value));
+                });
             }
             
             // Execute request
-            try (CloseableHttpResponse response = httpClient.execute(getRequest)) {
-                String responseContent = readResponseContent(response);
-                
-                if (config.isEnableDetailedLogging()) {
-                    logger.info("=== PROXY: WSDL Response from Target Endpoint ===");
-                    logger.info("PROXY: Response Status: " + response.getCode() + " " + response.getReasonPhrase());
-                    logger.info("PROXY: Response Headers:");
-                    for (org.apache.hc.core5.http.Header header : response.getHeaders()) {
-                        logger.info("PROXY:   " + header.getName() + ": " + header.getValue());
-                    }
-                    logger.info("PROXY: WSDL Response Content:\n" + responseContent);
-                }
-                
-                return responseContent;
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (config.isEnableDetailedLogging()) {
+                logger.info("=== PROXY: WSDL Response from Target Endpoint ===");
+                logger.info("PROXY: Response Status: " + response.statusCode());
+                logger.info("PROXY: Response Headers:");
+                response.headers().map().forEach((name, values) -> {
+                    values.forEach(value -> logger.info("PROXY:   " + name + ": " + value));
+                });
+                logger.info("PROXY: WSDL Response Content:\n" + response.body());
             }
+            
+            return response.body();
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Request was interrupted", e);
         }
     }
     
     /**
      * Copy headers from original request to forwarded request
      */
-    private void copyHeaders(HttpServletRequest originalRequest, org.apache.hc.core5.http.HttpRequest forwardRequest) {
+    private void copyHeaders(HttpServletRequest originalRequest, HttpRequest.Builder requestBuilder) {
         Enumeration<String> headerNames = originalRequest.getHeaderNames();
         
         while (headerNames.hasMoreElements()) {
@@ -541,7 +566,7 @@ public class WebServicesProxyServlet extends HttpServlet {
             // Skip headers that shouldn't be forwarded
             if (!shouldSkipHeader(headerName)) {
                 String headerValue = originalRequest.getHeader(headerName);
-                forwardRequest.setHeader(headerName, headerValue);
+                requestBuilder.header(headerName, headerValue);
             }
         }
     }
@@ -551,27 +576,46 @@ public class WebServicesProxyServlet extends HttpServlet {
      */
     private boolean shouldSkipHeader(String headerName) {
         String lowerName = headerName.toLowerCase();
-        return lowerName.equals("host") ||
-               lowerName.equals("content-length") ||
-               lowerName.equals("connection") ||
-               lowerName.equals("transfer-encoding") ||
-               lowerName.startsWith("x-proxy-destination");  // Skip proxy-specific headers
+        
+        // Always skip these headers
+        if (lowerName.equals("host") ||
+            lowerName.equals("content-length") ||
+            lowerName.equals("transfer-encoding") ||
+            lowerName.startsWith("x-proxy-destination")) {  // Skip proxy-specific headers
+            return true;
+        }
+        
+        // Handle restricted headers based on configuration
+        if (isRestrictedHeader(lowerName)) {
+            if (config.isAllowRestrictedHeaders()) {
+                if (config.isEnableDetailedLogging()) {
+                    logger.info("PROXY: Allowing restricted header: " + headerName);
+                }
+                return false; // Don't skip - allow the header
+            } else {
+                if (config.isEnableDetailedLogging()) {
+                    logger.info("PROXY: Skipping restricted header: " + headerName);
+                }
+                return true; // Skip the header
+            }
+        }
+        
+        return false; // Don't skip other headers
     }
     
     /**
-     * Read response content from HTTP response
+     * Check if a header is considered restricted
      */
-    private String readResponseContent(CloseableHttpResponse response) throws IOException {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(response.getEntity().getContent(), "UTF-8"))) {
-            
-            StringBuilder content = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-            return content.toString();
-        }
+    private boolean isRestrictedHeader(String lowerHeaderName) {
+        // Common restricted headers that are typically blocked by HTTP clients
+        return lowerHeaderName.equals("connection") ||
+               lowerHeaderName.equals("upgrade") ||
+               lowerHeaderName.equals("proxy-connection") ||
+               lowerHeaderName.equals("proxy-authenticate") ||
+               lowerHeaderName.equals("proxy-authorization") ||
+               lowerHeaderName.equals("te") ||
+               lowerHeaderName.equals("trailers") ||
+               lowerHeaderName.equals("expect");
     }
     
     /**
@@ -623,6 +667,7 @@ public class WebServicesProxyServlet extends HttpServlet {
             writer.write("<p>Remove CoordinationContext: " + config.isRemoveCoordinationContext() + "</p>");
             writer.write("<p>Remove WS-AT Elements: " + config.isRemoveWSATElements() + "</p>");
             writer.write("<p>Remove Transaction Elements: " + config.isRemoveTransactionElements() + "</p>");
+            writer.write("<p>Allow Restricted Headers: " + config.isAllowRestrictedHeaders() + "</p>");
             writer.write("<h3>Usage:</h3>");
             writer.write("<p><strong>SOAP Requests:</strong> The proxy automatically extracts the destination URL from the WS-Addressing To field in the SOAP header. If not found, it falls back to HTTP headers.</p>");
             writer.write("<p><strong>WSDL Requests:</strong> Use one of these headers to specify destination:</p>");
@@ -632,6 +677,21 @@ public class WebServicesProxyServlet extends HttpServlet {
             writer.write("<li><code>" + DESTINATION_PORT_HEADER + "</code>: Destination port</li>");
             writer.write("<li><code>" + DESTINATION_PROTOCOL_HEADER + "</code>: Destination protocol (http/https)</li>");
             writer.write("</ul>");
+            writer.write("<h3>Restricted Headers:</h3>");
+            writer.write("<p>When 'Allow Restricted Headers' is enabled, the proxy will forward restricted headers like 'upgrade', 'connection', etc. that are normally blocked by HTTP clients.</p>");
+            writer.write("<p>Restricted headers include: connection, upgrade, proxy-connection, proxy-authenticate, proxy-authorization, te, trailers, expect</p>");
+            writer.write("<h3>System Properties:</h3>");
+            writer.write("<p>Configuration can be overridden at runtime using system properties. System properties take precedence over proxy.properties file values:</p>");
+            writer.write("<ul>");
+            writer.write("<li><code>-Dproxy.allow.restricted.headers=true</code> - Allow restricted headers</li>");
+            writer.write("<li><code>-Dproxy.remove.coordination.context=false</code> - Disable coordination context removal</li>");
+            writer.write("<li><code>-Dproxy.remove.wsat.elements=false</code> - Disable WS-AT element removal</li>");
+            writer.write("<li><code>-Dproxy.remove.transaction.elements=false</code> - Disable transaction element removal</li>");
+            writer.write("<li><code>-Dproxy.logging.detailed=false</code> - Disable detailed logging</li>");
+            writer.write("<li><code>-Dproxy.connection.timeout.ms=15000</code> - Set connection timeout</li>");
+            writer.write("<li><code>-Dproxy.socket.timeout.ms=45000</code> - Set socket timeout</li>");
+            writer.write("</ul>");
+            writer.write("<p>Example: <code>java -Dproxy.allow.restricted.headers=true -jar myapp.jar</code></p>");
             writer.write("<h3>Requirements:</h3>");
             writer.write("<p>SOAP messages should contain a valid WS-Addressing To header with the destination service URL. If not available, provide destination via HTTP headers.</p>");
             writer.write("</body></html>");

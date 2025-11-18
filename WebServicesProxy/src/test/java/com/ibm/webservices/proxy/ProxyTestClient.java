@@ -1,22 +1,19 @@
 package com.ibm.webservices.proxy;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 /**
  * Test client to demonstrate the Web Services Proxy functionality
- *
+ * 
  * This client shows how to:
- * 1. Send SOAP requests to the proxy with WS-Addressing To field
- * 2. Specify destination via HTTP headers (fallback method)
+ * 1. Send SOAP requests to the proxy
+ * 2. Specify destination via headers
  * 3. Verify that CoordinationType elements are removed
- *
- * Note: The proxy now requires destination to be specified either in:
- * - SOAP message WS-Addressing To field (primary method)
- * - HTTP headers (fallback method)
- * Configuration-based destinations have been removed.
  */
 public class ProxyTestClient {
     
@@ -40,8 +37,12 @@ public class ProxyTestClient {
             System.out.println("\n--- Test 3: WSDL Request ---");
             client.testWsdlRequest();
             
-            // Test 4: Status page
-            System.out.println("\n--- Test 4: Proxy Status Page ---");
+            // Test 4: Restricted headers test
+            System.out.println("\n--- Test 4: Restricted Headers Test ---");
+            client.testRestrictedHeaders();
+            
+            // Test 5: Status page
+            System.out.println("\n--- Test 5: Proxy Status Page ---");
             client.testStatusPage();
             
         } catch (Exception e) {
@@ -53,87 +54,138 @@ public class ProxyTestClient {
     /**
      * Test SOAP request with complete destination URL header
      */
-    private void testSoapRequestWithDestinationUrl() throws IOException {
+    private void testSoapRequestWithDestinationUrl() throws IOException, InterruptedException {
         String soapMessage = createSampleSoapMessage();
         
-        HttpURLConnection connection = createConnection(PROXY_URL, "POST");
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
         
-        // Set destination URL header
-        connection.setRequestProperty("X-Proxy-Destination-URL", "https://localhost:9444");
-        connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
-        connection.setRequestProperty("SOAPAction", "urn:example:bank/BankService/transferRequest");
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(PROXY_URL))
+            .timeout(Duration.ofSeconds(30))
+            .header("X-Proxy-Destination-URL", "https://localhost:9444/TransactionWebService")
+            .header("Content-Type", "text/xml; charset=utf-8")
+            .header("SOAPAction", "transfer")
+            .POST(HttpRequest.BodyPublishers.ofString(soapMessage))
+            .build();
         
-        // Send SOAP message
-        sendRequest(connection, soapMessage);
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         
-        // Read response
-        String response = readResponse(connection);
-        System.out.println("Response Status: " + connection.getResponseCode());
-        System.out.println("Response: " + response.substring(0, Math.min(200, response.length())) + "...");
-        
-        connection.disconnect();
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Response: " + response.body().substring(0, Math.min(200, response.body().length())) + "...");
     }
     
     /**
      * Test SOAP request with individual destination headers
-     * Note: All three headers (host, port, protocol) must be provided when using header-based routing
      */
-    private void testSoapRequestWithIndividualHeaders() throws IOException {
+    private void testSoapRequestWithIndividualHeaders() throws IOException, InterruptedException {
         String soapMessage = createSampleSoapMessage();
         
-        HttpURLConnection connection = createConnection(PROXY_URL, "POST");
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
         
-        // Set individual destination headers
-        connection.setRequestProperty("X-Proxy-Destination-Host", "localhost");
-        connection.setRequestProperty("X-Proxy-Destination-Port", "9444");
-        connection.setRequestProperty("X-Proxy-Destination-Protocol", "https");
-        connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
-        connection.setRequestProperty("SOAPAction", "urn:example:bank/BankService/transferRequest");
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(PROXY_URL))
+            .timeout(Duration.ofSeconds(30))
+            .header("X-Proxy-Destination-Host", "localhost")
+            .header("X-Proxy-Destination-Port", "9444")
+            .header("X-Proxy-Destination-Protocol", "https")
+            .header("Content-Type", "text/xml; charset=utf-8")
+            .header("SOAPAction", "transfer")
+            .POST(HttpRequest.BodyPublishers.ofString(soapMessage))
+            .build();
         
-        // Send SOAP message
-        sendRequest(connection, soapMessage);
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         
-        // Read response
-        String response = readResponse(connection);
-        System.out.println("Response Status: " + connection.getResponseCode());
-        System.out.println("Response: " + response.substring(0, Math.min(200, response.length())) + "...");
-        
-        connection.disconnect();
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Response: " + response.body().substring(0, Math.min(200, response.body().length())) + "...");
     }
     
     /**
      * Test WSDL request
      */
-    private void testWsdlRequest() throws IOException {
+    private void testWsdlRequest() throws IOException, InterruptedException {
         String wsdlUrl = PROXY_URL + "?wsdl";
         
-        HttpURLConnection connection = createConnection(wsdlUrl, "GET");
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
         
-        // Set destination headers for WSDL
-        connection.setRequestProperty("X-Proxy-Destination-URL", "https://localhost:9444");
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(wsdlUrl))
+            .timeout(Duration.ofSeconds(30))
+            .header("X-Proxy-Destination-URL", "https://localhost:9444/TransactionWebService")
+            .GET()
+            .build();
         
-        // Read response
-        String response = readResponse(connection);
-        System.out.println("Response Status: " + connection.getResponseCode());
-        System.out.println("WSDL Content: " + response.substring(0, Math.min(300, response.length())) + "...");
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         
-        connection.disconnect();
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("WSDL Content: " + response.body().substring(0, Math.min(300, response.body().length())) + "...");
     }
     
     /**
      * Test proxy status page
      */
-    private void testStatusPage() throws IOException {
+    private void testStatusPage() throws IOException, InterruptedException {
         String statusUrl = "http://localhost:8080/";
         
-        HttpURLConnection connection = createConnection(statusUrl, "GET");
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
         
-        // Read response
-        String response = readResponse(connection);
-        System.out.println("Response Status: " + connection.getResponseCode());
-        System.out.println("Status Page: " + response.substring(0, Math.min(400, response.length())) + "...");
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(statusUrl))
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
         
-        connection.disconnect();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Status Page: " + response.body().substring(0, Math.min(400, response.body().length())) + "...");
+    }
+    
+    /**
+     * Test restricted headers functionality
+     */
+    private void testRestrictedHeaders() throws IOException, InterruptedException {
+        String soapMessage = createSampleSoapMessage();
+        
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+        
+        // Test with restricted headers (upgrade, connection)
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(PROXY_URL))
+            .timeout(Duration.ofSeconds(30))
+            .header("X-Proxy-Destination-URL", "https://localhost:9444/TransactionWebService")
+            .header("Content-Type", "text/xml; charset=utf-8")
+            .header("SOAPAction", "transfer")
+            .header("Upgrade", "websocket")  // Restricted header
+            .header("Connection", "upgrade") // Restricted header
+            .header("Custom-Header", "test-value") // Non-restricted header
+            .POST(HttpRequest.BodyPublishers.ofString(soapMessage))
+            .build();
+        
+        System.out.println("Sending request with restricted headers:");
+        System.out.println("  - Upgrade: websocket");
+        System.out.println("  - Connection: upgrade");
+        System.out.println("  - Custom-Header: test-value");
+        
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            System.out.println("Response Status: " + response.statusCode());
+            System.out.println("Note: Check proxy logs to see if restricted headers were processed correctly");
+            System.out.println("Response: " + response.body().substring(0, Math.min(200, response.body().length())) + "...");
+        } catch (Exception e) {
+            System.out.println("Request failed (expected if target service is not running): " + e.getMessage());
+            System.out.println("This test demonstrates the restricted headers functionality in the proxy configuration.");
+        }
     }
     
     /**
@@ -141,98 +193,34 @@ public class ProxyTestClient {
      */
     private String createSampleSoapMessage() {
         return """
-            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-             
-             <soap:Header>
-             <Action xmlns="http://www.w3.org/2005/08/addressing" soap:mustUnderstand="1">urn:example:bank/BankService/transferRequest</Action>
-             <MessageID xmlns="http://www.w3.org/2005/08/addressing" soap:mustUnderstand="1">urn:uuid:716a7d6e-5564-4f2c-8cf4-3ebc910731be</MessageID>
-             <To xmlns="http://www.w3.org/2005/08/addressing" soap:mustUnderstand="1">https://localhost:9444/TransactionWebService/BankService</To>
-             <ReplyTo xmlns="http://www.w3.org/2005/08/addressing" soap:mustUnderstand="1">
-             <Address>http://www.w3.org/2005/08/addressing/anonymous</Address>
-             </ReplyTo>
-             <CoordinationContext xmlns="http://docs.oasis-open.org/ws-tx/wscoor/2006/06" xmlns:ns2="http://www.w3.org/2005/08/addressing" soap:mustUnderstand="1">
-             <Identifier>0000019a829022d3000000010a408b543fdb9d98fb1e0693187e0363c55c0c9005f56133</Identifier>
-             <Expires>119889</Expires>
-             <CoordinationType>http://docs.oasis-open.org/ws-tx/wsat/2006/06</CoordinationType>
-             <RegistrationService>
-             
-               <ns2:Address>https://localhost:9443/ibm/wsatservice/RegistrationService
-               </ns2:Address>
-             
-               <ns2:ReferenceParameters>
-             
-               <ns3:GlobalID xmlns:ns3="http://com.ibm.ws.wsat/extension">0000019a829022d3000000010a408b543fdb9d98fb1e0693187e0363c55c0c9005f56133
-               </ns3:GlobalID>
-             
-               </ns2:ReferenceParameters>
-             </RegistrationService>
-             </CoordinationContext>
-             
-             </soap:Header>
-             
-             <soap:Body>
-             
-               <ns2:transfer xmlns:ns2="urn:example:bank">
-             <fromAccount>ACC001</fromAccount>
-             <toAccount>ACC002</toAccount>
-             <cents>5000</cents>
-             
-               </ns2:transfer>
-             
-             </soap:Body>
-             
-             </soap:Envelope>
+            <?xml version="1.0" encoding="UTF-8"?>
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:bank="urn:example:bank">
+                <soap:Header>
+                    <!-- This CoordinationContext should be removed by the proxy -->
+                    <wscoor:CoordinationContext xmlns:wscoor="http://docs.oasis-open.org/ws-tx/wscoor/2006/06">
+                        <wscoor:Identifier>urn:uuid:12345678-1234-1234-1234-123456789012</wscoor:Identifier>
+                        <wscoor:CoordinationType>http://docs.oasis-open.org/ws-tx/wsat/2006/06</wscoor:CoordinationType>
+                        <wscoor:RegistrationService>
+                            <wsa:Address xmlns:wsa="http://www.w3.org/2005/08/addressing">
+                                https://coordinator.example.com/registration
+                            </wsa:Address>
+                        </wscoor:RegistrationService>
+                    </wscoor:CoordinationContext>
+                    
+                    <!-- This WS-AT element should also be removed -->
+                    <wsat:ATAssertion xmlns:wsat="http://docs.oasis-open.org/ws-tx/wsat/2006/06">
+                        <wsat:Durable>true</wsat:Durable>
+                    </wsat:ATAssertion>
+                </soap:Header>
+                <soap:Body>
+                    <bank:transfer>
+                        <bank:fromAccount>ACC001</bank:fromAccount>
+                        <bank:toAccount>ACC002</bank:toAccount>
+                        <bank:cents>10000</bank:cents>
+                    </bank:transfer>
+                </soap:Body>
+            </soap:Envelope>
             """;
-    }
-    
-    /**
-     * Create HTTP connection
-     */
-    private HttpURLConnection createConnection(String urlString, String method) throws IOException {
-        URL url = new URL(urlString);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod(method);
-        connection.setDoOutput("POST".equals(method));
-        connection.setDoInput(true);
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(30000);
-        return connection;
-    }
-    
-    /**
-     * Send request body
-     */
-    private void sendRequest(HttpURLConnection connection, String content) throws IOException {
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = content.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-    }
-    
-    /**
-     * Read response from connection
-     */
-    private String readResponse(HttpURLConnection connection) throws IOException {
-        InputStream inputStream;
-        
-        try {
-            inputStream = connection.getInputStream();
-        } catch (IOException e) {
-            inputStream = connection.getErrorStream();
-            if (inputStream == null) {
-                throw e;
-            }
-        }
-        
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line).append("\n");
-            }
-            return response.toString();
-        }
     }
 }
